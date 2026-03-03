@@ -21,12 +21,21 @@ class PrefsKeys {
   static const String optionAngleBackend = 'angle_backend';
   static const String optionFpsLimit = 'fps_limit';
   static const String optionRenderer = 'renderer';
+  static const String optionMemoryProfile = 'memory_profile';
+  static const String optionMemoryBudgetMb = 'memory_budget_mb';
+  static const String optionMemoryLogIntervalMs = 'memory_log_interval_ms';
+  static const String optionPsbCacheMb = 'psb_cache_mb';
+  static const String optionPsbCacheEntries = 'psb_cache_entries';
+  static const String optionArchiveCacheCount = 'archive_cache_count';
+  static const String optionAutoPathCacheCount = 'autopath_cache_count';
 
   // ── Engine option values ────────────────────────────────────────
   static const String angleBackendGles = 'gles';
   static const String angleBackendVulkan = 'vulkan';
   static const String rendererOpengl = 'opengl';
   static const String rendererSoftware = 'software';
+  static const String memoryProfileBalanced = 'balanced';
+  static const String memoryProfileAggressive = 'aggressive';
 
   // ── Engine mode values ──────────────────────────────────────────
   static const String engineModeBuiltIn = 'builtIn';

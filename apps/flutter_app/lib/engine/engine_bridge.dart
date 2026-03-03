@@ -51,6 +51,44 @@ class EngineInputEventData {
   final int unicodeCodepoint;
 }
 
+class EngineMemoryStats {
+  const EngineMemoryStats({
+    required this.selfUsedMb,
+    required this.systemFreeMb,
+    required this.systemTotalMb,
+    required this.graphicCacheBytes,
+    required this.graphicCacheLimitBytes,
+    required this.xp3SegmentCacheBytes,
+    required this.psbCacheBytes,
+    required this.psbCacheEntries,
+    required this.psbCacheEntryLimit,
+    required this.psbCacheHits,
+    required this.psbCacheMisses,
+    required this.archiveCacheEntries,
+    required this.archiveCacheLimit,
+    required this.autopathCacheEntries,
+    required this.autopathCacheLimit,
+    required this.autopathTableEntries,
+  });
+
+  final int selfUsedMb;
+  final int systemFreeMb;
+  final int systemTotalMb;
+  final int graphicCacheBytes;
+  final int graphicCacheLimitBytes;
+  final int xp3SegmentCacheBytes;
+  final int psbCacheBytes;
+  final int psbCacheEntries;
+  final int psbCacheEntryLimit;
+  final int psbCacheHits;
+  final int psbCacheMisses;
+  final int archiveCacheEntries;
+  final int archiveCacheLimit;
+  final int autopathCacheEntries;
+  final int autopathCacheLimit;
+  final int autopathTableEntries;
+}
+
 enum EngineStartupState { idle, running, succeeded, failed }
 
 abstract interface class EngineBridge {
@@ -118,6 +156,7 @@ abstract interface class EngineBridge {
   Future<void> disposeSurfaceTexture({required int textureId});
 
   String engineGetRendererInfo();
+  Future<EngineMemoryStats?> engineGetMemoryStats();
   String engineGetLastError();
 }
 

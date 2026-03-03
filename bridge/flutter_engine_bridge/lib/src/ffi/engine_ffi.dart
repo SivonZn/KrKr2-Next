@@ -28,6 +28,44 @@ class EngineFrameData {
   final Uint8List pixels;
 }
 
+class EngineMemoryStatsData {
+  const EngineMemoryStatsData({
+    required this.selfUsedMb,
+    required this.systemFreeMb,
+    required this.systemTotalMb,
+    required this.graphicCacheBytes,
+    required this.graphicCacheLimitBytes,
+    required this.xp3SegmentCacheBytes,
+    required this.psbCacheBytes,
+    required this.psbCacheEntries,
+    required this.psbCacheEntryLimit,
+    required this.psbCacheHits,
+    required this.psbCacheMisses,
+    required this.archiveCacheEntries,
+    required this.archiveCacheLimit,
+    required this.autopathCacheEntries,
+    required this.autopathCacheLimit,
+    required this.autopathTableEntries,
+  });
+
+  final int selfUsedMb;
+  final int systemFreeMb;
+  final int systemTotalMb;
+  final int graphicCacheBytes;
+  final int graphicCacheLimitBytes;
+  final int xp3SegmentCacheBytes;
+  final int psbCacheBytes;
+  final int psbCacheEntries;
+  final int psbCacheEntryLimit;
+  final int psbCacheHits;
+  final int psbCacheMisses;
+  final int archiveCacheEntries;
+  final int archiveCacheLimit;
+  final int autopathCacheEntries;
+  final int autopathCacheLimit;
+  final int autopathTableEntries;
+}
+
 class EngineInputEventData {
   const EngineInputEventData({
     required this.type,
@@ -423,6 +461,37 @@ class EngineFfiBridge {
       return buffer.cast<Utf8>().toDartString();
     } finally {
       calloc.free(buffer);
+    }
+  }
+
+  EngineMemoryStatsData? getMemoryStats() {
+    final stats = calloc<EngineMemoryStats>();
+    try {
+      stats.ref.structSize = sizeOf<EngineMemoryStats>();
+      final result = _bindings.engineGetMemoryStats(_handle, stats);
+      if (result != kEngineResultOk) {
+        return null;
+      }
+      return EngineMemoryStatsData(
+        selfUsedMb: stats.ref.selfUsedMb,
+        systemFreeMb: stats.ref.systemFreeMb,
+        systemTotalMb: stats.ref.systemTotalMb,
+        graphicCacheBytes: stats.ref.graphicCacheBytes,
+        graphicCacheLimitBytes: stats.ref.graphicCacheLimitBytes,
+        xp3SegmentCacheBytes: stats.ref.xp3SegmentCacheBytes,
+        psbCacheBytes: stats.ref.psbCacheBytes,
+        psbCacheEntries: stats.ref.psbCacheEntries,
+        psbCacheEntryLimit: stats.ref.psbCacheEntryLimit,
+        psbCacheHits: stats.ref.psbCacheHits,
+        psbCacheMisses: stats.ref.psbCacheMisses,
+        archiveCacheEntries: stats.ref.archiveCacheEntries,
+        archiveCacheLimit: stats.ref.archiveCacheLimit,
+        autopathCacheEntries: stats.ref.autopathCacheEntries,
+        autopathCacheLimit: stats.ref.autopathCacheLimit,
+        autopathTableEntries: stats.ref.autopathTableEntries,
+      );
+    } finally {
+      calloc.free(stats);
     }
   }
 

@@ -75,6 +75,33 @@ typedef struct engine_frame_desc_t {
   void* reserved_ptr[4];
 } engine_frame_desc_t;
 
+typedef struct engine_memory_stats_t {
+  uint32_t struct_size;
+  uint32_t self_used_mb;
+  uint32_t system_free_mb;
+  uint32_t system_total_mb;
+
+  uint64_t graphic_cache_bytes;
+  uint64_t graphic_cache_limit_bytes;
+  uint64_t xp3_segment_cache_bytes;
+
+  uint64_t psb_cache_bytes;
+  uint32_t psb_cache_entries;
+  uint32_t psb_cache_entry_limit;
+  uint64_t psb_cache_hits;
+  uint64_t psb_cache_misses;
+
+  uint32_t archive_cache_entries;
+  uint32_t archive_cache_limit;
+  uint32_t autopath_cache_entries;
+  uint32_t autopath_cache_limit;
+  uint32_t autopath_table_entries;
+  uint32_t reserved_u32;
+
+  uint64_t reserved_u64[4];
+  void* reserved_ptr[4];
+} engine_memory_stats_t;
+
 typedef enum engine_input_event_type_t {
   ENGINE_INPUT_EVENT_POINTER_DOWN = 1,
   ENGINE_INPUT_EVENT_POINTER_MOVE = 2,
@@ -294,6 +321,13 @@ ENGINE_API_EXPORT engine_result_t engine_get_frame_rendered_flag(
  */
 ENGINE_API_EXPORT engine_result_t engine_get_renderer_info(
     engine_handle_t handle, char* out_buffer, uint32_t buffer_size);
+
+/*
+ * Gets runtime memory/cache statistics snapshot.
+ * out_stats->struct_size must be initialized by caller.
+ */
+ENGINE_API_EXPORT engine_result_t engine_get_memory_stats(
+    engine_handle_t handle, engine_memory_stats_t* out_stats);
 
 /*
  * Returns last error message as UTF-8 null-terminated string.

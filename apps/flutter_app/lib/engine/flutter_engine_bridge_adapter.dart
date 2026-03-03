@@ -266,5 +266,31 @@ class FlutterEngineBridgeAdapter implements EngineBridge {
   String engineGetRendererInfo() => _delegate.engineGetRendererInfo();
 
   @override
+  Future<EngineMemoryStats?> engineGetMemoryStats() async {
+    final stats = await _delegate.engineGetMemoryStats();
+    if (stats == null) {
+      return null;
+    }
+    return EngineMemoryStats(
+      selfUsedMb: stats.selfUsedMb,
+      systemFreeMb: stats.systemFreeMb,
+      systemTotalMb: stats.systemTotalMb,
+      graphicCacheBytes: stats.graphicCacheBytes,
+      graphicCacheLimitBytes: stats.graphicCacheLimitBytes,
+      xp3SegmentCacheBytes: stats.xp3SegmentCacheBytes,
+      psbCacheBytes: stats.psbCacheBytes,
+      psbCacheEntries: stats.psbCacheEntries,
+      psbCacheEntryLimit: stats.psbCacheEntryLimit,
+      psbCacheHits: stats.psbCacheHits,
+      psbCacheMisses: stats.psbCacheMisses,
+      archiveCacheEntries: stats.archiveCacheEntries,
+      archiveCacheLimit: stats.archiveCacheLimit,
+      autopathCacheEntries: stats.autopathCacheEntries,
+      autopathCacheLimit: stats.autopathCacheLimit,
+      autopathTableEntries: stats.autopathTableEntries,
+    );
+  }
+
+  @override
   String engineGetLastError() => _delegate.engineGetLastError();
 }

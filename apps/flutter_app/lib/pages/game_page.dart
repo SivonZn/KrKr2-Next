@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -79,6 +80,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   final ScrollController _bootLogScrollController = ScrollController();
   Timer? _startupPollTimer;
   bool _startupPollInFlight = false;
+  Timer? _memoryStatsTimer;
+  bool _memoryStatsPollInFlight = false;
 
   @override
   void initState() {
@@ -104,6 +107,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
   @override
   void dispose() {
     _stopStartupPolling();
+    _stopMemoryStatsPolling();
     _bootLogScrollController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _stopTickLoop(notify: false);
@@ -303,6 +307,8 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
       );
     }
 
+    await _applyMemoryGovernorOptions();
+
     if (!mounted) return;
     setState(() => _phase = _EnginePhase.opening);
     _stopStartupPolling();
@@ -379,6 +385,7 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     if (_isTicking) return;
     setState(() => _isTicking = true);
     _log('Tick loop started');
+    if (kDebugMode) _startMemoryStatsPolling();
 
     Duration lastElapsed = Duration.zero;
     _lastRenderedElapsed = Duration.zero;
@@ -444,11 +451,52 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     _ticker?.stop();
     _ticker?.dispose();
     _ticker = null;
+    _stopMemoryStatsPolling();
 
     _isTicking = false;
     if (notify && mounted) {
       setState(() {});
     }
+  }
+
+  void _startMemoryStatsPolling() {
+    _stopMemoryStatsPolling();
+    _memoryStatsTimer = Timer.periodic(const Duration(seconds: 20), (_) async {
+      if (!mounted || _phase != _EnginePhase.running || !_isTicking) {
+        return;
+      }
+      if (_memoryStatsPollInFlight) {
+        return;
+      }
+      _memoryStatsPollInFlight = true;
+      try {
+        final stats = await _bridge.engineGetMemoryStats();
+        if (stats == null) {
+          return;
+        }
+        final int graphicUsedMb = stats.graphicCacheBytes ~/ (1024 * 1024);
+        final int graphicLimitMb =
+            stats.graphicCacheLimitBytes ~/ (1024 * 1024);
+        final int psbUsedMb = stats.psbCacheBytes ~/ (1024 * 1024);
+        final int xp3SegMb = stats.xp3SegmentCacheBytes ~/ (1024 * 1024);
+        _log(
+          'MEM rss=${stats.selfUsedMb}MB free=${stats.systemFreeMb}MB '
+          'g=${graphicUsedMb}MB/${graphicLimitMb}MB '
+          'psb=${psbUsedMb}MB(${stats.psbCacheEntries}/${stats.psbCacheEntryLimit}) '
+          'xp3=${xp3SegMb}MB '
+          'arc=${stats.archiveCacheEntries}/${stats.archiveCacheLimit} '
+          'ap=${stats.autopathCacheEntries}/${stats.autopathCacheLimit} '
+          'tbl=${stats.autopathTableEntries}',
+        );
+      } finally {
+        _memoryStatsPollInFlight = false;
+      }
+    });
+  }
+
+  void _stopMemoryStatsPolling() {
+    _memoryStatsTimer?.cancel();
+    _memoryStatsTimer = null;
   }
 
   void _startStartupPolling() {
@@ -625,6 +673,46 @@ class _GamePageState extends State<GamePage> with WidgetsBindingObserver {
     await _bridge.engineSetOption(
       key: PrefsKeys.optionFpsLimit,
       value: fpsValue.toString(),
+    );
+  }
+
+  Future<void> _applyMemoryGovernorOptions() async {
+    const profile = PrefsKeys.memoryProfileAggressive;
+    const budgetMb = 0; // 0 = native auto budget by system memory
+    const logIntervalMs = 12000;
+    const psbCacheMb = 128;
+    const psbCacheEntries = 1024;
+    const archiveCacheCount = 20;
+    const autoPathCacheCount = 192;
+
+    _log('Setting memory_profile=$profile');
+    await _bridge.engineSetOption(
+      key: PrefsKeys.optionMemoryProfile,
+      value: profile,
+    );
+    await _bridge.engineSetOption(
+      key: PrefsKeys.optionMemoryBudgetMb,
+      value: '$budgetMb',
+    );
+    await _bridge.engineSetOption(
+      key: PrefsKeys.optionMemoryLogIntervalMs,
+      value: '$logIntervalMs',
+    );
+    await _bridge.engineSetOption(
+      key: PrefsKeys.optionPsbCacheMb,
+      value: '$psbCacheMb',
+    );
+    await _bridge.engineSetOption(
+      key: PrefsKeys.optionPsbCacheEntries,
+      value: '$psbCacheEntries',
+    );
+    await _bridge.engineSetOption(
+      key: PrefsKeys.optionArchiveCacheCount,
+      value: '$archiveCacheCount',
+    );
+    await _bridge.engineSetOption(
+      key: PrefsKeys.optionAutoPathCacheCount,
+      value: '$autoPathCacheCount',
     );
   }
 

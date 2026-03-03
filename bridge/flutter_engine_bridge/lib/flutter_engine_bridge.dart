@@ -17,7 +17,11 @@ export 'src/ffi/engine_bindings.dart'
         kEngineStartupStateRunning,
         kEngineStartupStateSucceeded;
 export 'src/ffi/engine_ffi.dart'
-    show EngineFrameData, EngineFrameInfo, EngineInputEventData;
+    show
+        EngineFrameData,
+        EngineFrameInfo,
+        EngineInputEventData,
+        EngineMemoryStatsData;
 
 import 'flutter_engine_bridge_platform_interface.dart';
 import 'src/ffi/engine_bindings.dart';
@@ -412,6 +416,20 @@ class FlutterEngineBridge {
       return '';
     }
     return ffi.getRendererInfo();
+  }
+
+  Future<EngineMemoryStatsData?> engineGetMemoryStats() async {
+    final ffi = _ffiBridge;
+    if (ffi == null) {
+      return null;
+    }
+    final stats = ffi.getMemoryStats();
+    if (stats == null) {
+      _fallbackLastError = ffi.lastError();
+    } else {
+      _fallbackLastError = '';
+    }
+    return stats;
   }
 
   String engineGetLastError() {

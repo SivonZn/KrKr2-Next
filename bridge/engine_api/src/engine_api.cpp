@@ -34,16 +34,20 @@ void krkr_GetSurfaceDimensions(uint32_t*, uint32_t*);
 #include <spdlog/spdlog.h>
 
 #include "environ/Application.h"
+#include "environ/Platform.h"
 #include "environ/EngineBootstrap.h"
 #include "environ/EngineLoop.h"
 #include "environ/MainScene.h"
+#include "base/StorageIntf.h"
 #include "base/SysInitIntf.h"
 #include "base/impl/SysInitImpl.h"
+#include "visual/GraphicsLoaderIntf.h"
 #include "visual/ogl/ogl_common.h"
 #include "visual/ogl/krkr_egl_context.h"
 #include "visual/ogl/angle_backend.h"
 #include "visual/impl/WindowImpl.h"
 #include "visual/RenderManager.h"
+#include "psbfile/PSBMedia.h"
 #include "engine_options.h"
 
 int TVPDrawSceneOnce(int interval);
@@ -98,6 +102,11 @@ struct engine_handle_s {
     std::thread worker;
     bool worker_running = false;
   } startup;
+
+  struct MemoryOptionState {
+    int psb_cache_mb = 0;
+    int psb_cache_entries = 0;
+  } memory_options;
 };
 
 namespace {
@@ -488,6 +497,11 @@ engine_result_t OpenGameCore(engine_handle_t handle,
   }
 
   EnsureRuntimeLoggersInitialized();
+  // Cache options set via engine_set_option() are already stored in
+  // TVPEarlySetOptions and will be merged during TVPSystemInit().
+  // Do NOT call TVPGetCommandLine() here — it triggers
+  // TVPInitProgramArgumentsAndDataPath() which caches TVPGetAppPath()
+  // as empty (TVPProjectDir is not set yet), corrupting path resolution.
 
   std::string normalized_game_root_path(game_root_path_utf8);
   // Only append trailing slash for directory paths.  Archive files
@@ -1416,6 +1430,42 @@ engine_result_t engine_set_option(engine_handle_t handle,
 
   TVPSetCommandLine(ttstr(option->key_utf8).c_str(), ttstr(option->value_utf8));
 
+  if (key == ENGINE_OPTION_ARCHIVE_CACHE_COUNT) {
+    const int count = std::atoi(option->value_utf8);
+    if (g_engine_bootstrapped && count > 0) {
+      TVPSetArchiveCacheCount(static_cast<tjs_uint>(count));
+    }
+  } else if (key == ENGINE_OPTION_AUTOPATH_CACHE_COUNT) {
+    const int count = std::atoi(option->value_utf8);
+    if (g_engine_bootstrapped && count > 0) {
+      TVPSetAutoPathCacheMaxCount(static_cast<tjs_uint>(count));
+    }
+  } else if (key == ENGINE_OPTION_PSB_CACHE_MB) {
+    const int cache_mb = std::atoi(option->value_utf8);
+    if (cache_mb > 0) {
+      impl->memory_options.psb_cache_mb = cache_mb;
+    }
+    if (g_engine_bootstrapped && impl->memory_options.psb_cache_entries > 0 &&
+        impl->memory_options.psb_cache_mb > 0) {
+      PSB::SetPSBMediaCacheBudget(
+          static_cast<size_t>(impl->memory_options.psb_cache_entries),
+          static_cast<size_t>(impl->memory_options.psb_cache_mb) * 1024ULL *
+              1024ULL);
+    }
+  } else if (key == ENGINE_OPTION_PSB_CACHE_ENTRIES) {
+    const int entries = std::atoi(option->value_utf8);
+    if (entries > 0) {
+      impl->memory_options.psb_cache_entries = entries;
+    }
+    if (g_engine_bootstrapped && impl->memory_options.psb_cache_entries > 0 &&
+        impl->memory_options.psb_cache_mb > 0) {
+      PSB::SetPSBMediaCacheBudget(
+          static_cast<size_t>(impl->memory_options.psb_cache_entries),
+          static_cast<size_t>(impl->memory_options.psb_cache_mb) * 1024ULL *
+              1024ULL);
+    }
+  }
+
   ClearHandleErrorLocked(impl);
   SetThreadError(nullptr);
   return ENGINE_RESULT_OK;
@@ -2002,6 +2052,66 @@ engine_result_t engine_get_renderer_info(engine_handle_t handle,
   std::string info = std::string(gl_renderer) + " | " + std::string(gl_version);
   std::strncpy(out_buffer, info.c_str(), buffer_size - 1);
   out_buffer[buffer_size - 1] = '\0';
+
+  ClearHandleErrorLocked(impl);
+  SetThreadError(nullptr);
+  return ENGINE_RESULT_OK;
+}
+
+engine_result_t engine_get_memory_stats(engine_handle_t handle,
+                                        engine_memory_stats_t* out_stats) {
+  if (out_stats == nullptr) {
+    return SetThreadErrorAndReturn(ENGINE_RESULT_INVALID_ARGUMENT,
+                                   "out_stats is null");
+  }
+  if (out_stats->struct_size < sizeof(engine_memory_stats_t)) {
+    return SetThreadErrorAndReturn(
+        ENGINE_RESULT_INVALID_ARGUMENT,
+        "engine_memory_stats_t.struct_size is too small");
+  }
+
+  std::lock_guard<std::recursive_mutex> registry_guard(g_registry_mutex);
+  engine_handle_s* impl = nullptr;
+  auto result = ValidateHandleLocked(handle, &impl);
+  if (result != ENGINE_RESULT_OK) {
+    return result;
+  }
+
+  std::lock_guard<std::recursive_mutex> guard(impl->mutex);
+  result = ValidateHandleThreadLocked(impl);
+  if (result != ENGINE_RESULT_OK) {
+    return result;
+  }
+
+  std::memset(out_stats, 0, sizeof(*out_stats));
+  out_stats->struct_size = sizeof(engine_memory_stats_t);
+  TVPMemoryInfo meminfo{};
+  TVPGetMemoryInfo(meminfo);
+  out_stats->self_used_mb = static_cast<uint32_t>(
+      std::max<tjs_int>(0, TVPGetSelfUsedMemory()));
+  out_stats->system_free_mb = static_cast<uint32_t>(
+      std::max<tjs_int>(0, TVPGetSystemFreeMemory()));
+  out_stats->system_total_mb = static_cast<uint32_t>(meminfo.MemTotal / 1024);
+
+  out_stats->graphic_cache_bytes = TVPGetGraphicCacheTotalBytes();
+  out_stats->graphic_cache_limit_bytes = TVPGetGraphicCacheLimit();
+  out_stats->xp3_segment_cache_bytes = TVPGetXP3SegmentCacheTotalBytes();
+
+  out_stats->archive_cache_entries = TVPGetArchiveCacheCount();
+  out_stats->archive_cache_limit = TVPGetArchiveCacheLimit();
+  out_stats->autopath_cache_entries = TVPGetAutoPathCacheCount();
+  out_stats->autopath_cache_limit = TVPGetAutoPathCacheLimit();
+  out_stats->autopath_table_entries = TVPGetAutoPathTableCount();
+
+  PSB::PSBMediaCacheStats psb_stats{};
+  if (PSB::GetPSBMediaCacheStats(psb_stats)) {
+    out_stats->psb_cache_bytes = psb_stats.bytesInUse;
+    out_stats->psb_cache_entries = static_cast<uint32_t>(psb_stats.entryCount);
+    out_stats->psb_cache_entry_limit =
+        static_cast<uint32_t>(psb_stats.entryLimit);
+    out_stats->psb_cache_hits = psb_stats.hitCount;
+    out_stats->psb_cache_misses = psb_stats.missCount;
+  }
 
   ClearHandleErrorLocked(impl);
   SetThreadError(nullptr);
@@ -2656,6 +2766,7 @@ engine_result_t engine_get_frame_rendered_flag(engine_handle_t handle,
 engine_result_t engine_get_renderer_info(engine_handle_t handle,
                                          char* out_buffer,
                                          uint32_t buffer_size) {
+  (void)handle;
   if (out_buffer == nullptr || buffer_size == 0) {
     return SetThreadErrorAndReturn(ENGINE_RESULT_INVALID_ARGUMENT,
                                    "out_buffer is null or buffer_size is 0");
@@ -2666,6 +2777,32 @@ engine_result_t engine_get_renderer_info(engine_handle_t handle,
   const char* stub_info = "Stub (no runtime)";
   std::strncpy(out_buffer, stub_info, buffer_size - 1);
   out_buffer[buffer_size - 1] = '\0';
+  SetThreadError(nullptr);
+  return ENGINE_RESULT_OK;
+}
+
+engine_result_t engine_get_memory_stats(engine_handle_t handle,
+                                        engine_memory_stats_t* out_stats) {
+  if (out_stats == nullptr) {
+    return SetThreadErrorAndReturn(ENGINE_RESULT_INVALID_ARGUMENT,
+                                   "out_stats is null");
+  }
+  if (out_stats->struct_size < sizeof(engine_memory_stats_t)) {
+    return SetThreadErrorAndReturn(
+        ENGINE_RESULT_INVALID_ARGUMENT,
+        "engine_memory_stats_t.struct_size is too small");
+  }
+
+  std::lock_guard<std::recursive_mutex> registry_guard(g_registry_mutex);
+  engine_handle_s* impl = nullptr;
+  auto result = ValidateHandleLocked(handle, &impl);
+  if (result != ENGINE_RESULT_OK) {
+    return result;
+  }
+
+  std::memset(out_stats, 0, sizeof(*out_stats));
+  out_stats->struct_size = sizeof(engine_memory_stats_t);
+  impl->last_error.clear();
   SetThreadError(nullptr);
   return ENGINE_RESULT_OK;
 }

@@ -103,6 +103,79 @@ final class EngineFrameDesc extends Struct {
   external Pointer<Void> reservedPtr3;
 }
 
+final class EngineMemoryStats extends Struct {
+  @Uint32()
+  external int structSize;
+
+  @Uint32()
+  external int selfUsedMb;
+
+  @Uint32()
+  external int systemFreeMb;
+
+  @Uint32()
+  external int systemTotalMb;
+
+  @Uint64()
+  external int graphicCacheBytes;
+
+  @Uint64()
+  external int graphicCacheLimitBytes;
+
+  @Uint64()
+  external int xp3SegmentCacheBytes;
+
+  @Uint64()
+  external int psbCacheBytes;
+
+  @Uint32()
+  external int psbCacheEntries;
+
+  @Uint32()
+  external int psbCacheEntryLimit;
+
+  @Uint64()
+  external int psbCacheHits;
+
+  @Uint64()
+  external int psbCacheMisses;
+
+  @Uint32()
+  external int archiveCacheEntries;
+
+  @Uint32()
+  external int archiveCacheLimit;
+
+  @Uint32()
+  external int autopathCacheEntries;
+
+  @Uint32()
+  external int autopathCacheLimit;
+
+  @Uint32()
+  external int autopathTableEntries;
+
+  @Uint32()
+  external int reservedU32;
+
+  @Uint64()
+  external int reservedU640;
+
+  @Uint64()
+  external int reservedU641;
+
+  @Uint64()
+  external int reservedU642;
+
+  @Uint64()
+  external int reservedU643;
+
+  external Pointer<Void> reservedPtr0;
+  external Pointer<Void> reservedPtr1;
+  external Pointer<Void> reservedPtr2;
+  external Pointer<Void> reservedPtr3;
+}
+
 final class EngineInputEvent extends Struct {
   @Uint32()
   external int structSize;
@@ -233,6 +306,10 @@ typedef _EngineGetRendererInfoNative =
     Int32 Function(Pointer<Void>, Pointer<Utf8>, Uint32);
 typedef _EngineGetRendererInfoDart =
     int Function(Pointer<Void>, Pointer<Utf8>, int);
+typedef _EngineGetMemoryStatsNative =
+    Int32 Function(Pointer<Void>, Pointer<EngineMemoryStats>);
+typedef _EngineGetMemoryStatsDart =
+    int Function(Pointer<Void>, Pointer<EngineMemoryStats>);
 
 typedef _EngineGetLastErrorNative = Pointer<Utf8> Function(Pointer<Void>);
 typedef _EngineGetLastErrorDart = Pointer<Utf8> Function(Pointer<Void>);
@@ -320,6 +397,11 @@ class EngineBindings {
             _EngineGetRendererInfoNative,
             _EngineGetRendererInfoDart
           >('engine_get_renderer_info'),
+      engineGetMemoryStats = library
+          .lookupFunction<
+            _EngineGetMemoryStatsNative,
+            _EngineGetMemoryStatsDart
+          >('engine_get_memory_stats'),
       engineGetLastError = library
           .lookupFunction<_EngineGetLastErrorNative, _EngineGetLastErrorDart>(
             'engine_get_last_error',
@@ -351,6 +433,8 @@ class EngineBindings {
   engineSetRenderTargetSurface;
   final int Function(Pointer<Void>, Pointer<Uint32>) engineGetFrameRenderedFlag;
   final int Function(Pointer<Void>, Pointer<Utf8>, int) engineGetRendererInfo;
+  final int Function(Pointer<Void>, Pointer<EngineMemoryStats>)
+  engineGetMemoryStats;
   final Pointer<Utf8> Function(Pointer<Void>) engineGetLastError;
 
   static String _lastLoadError = '';

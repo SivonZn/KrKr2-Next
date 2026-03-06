@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'config/stats_base_url.dart' if (dart.library.io) 'config/stats_base_url_io.dart';
 import 'l10n/app_localizations.dart';
 import 'pages/home_page.dart';
+import 'services/first_open_analytics.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  FirstOpenAnalytics.reportIfNeeded(
+    baseUrl: statsBaseUrl,
+    version: '1.0.0',
+  );
   runApp(const Krkr2App());
 }
 

@@ -130,7 +130,9 @@ endif()
 
 if(ENABLE_TESTS AND NOT (IOS OR ANDROID))
     enable_testing()
-    add_subdirectory(tests)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/tests/CMakeLists.txt")
+        add_subdirectory(tests)
+    endif()
 endif()
 
 if(BUILD_TOOLS AND NOT (IOS OR ANDROID))

@@ -347,4 +347,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String xp3OperationFailed(String error) {
     return 'Operation failed: $error';
   }
+
+  @override
+  String get directoryAccessError =>
+      'Cannot access directory. Please check permissions.';
+
+  @override
+  String get noXp3FilesInDirectory =>
+      'No XP3 files found in the selected directory.';
+
+  @override
+  String get selectXp3File => 'Select XP3 File';
 }

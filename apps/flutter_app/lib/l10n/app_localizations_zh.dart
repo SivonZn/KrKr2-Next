@@ -336,4 +336,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String xp3OperationFailed(String error) {
     return '操作失败：$error';
   }
+
+  @override
+  String get directoryAccessError => '无法访问目录。请检查权限。';
+
+  @override
+  String get noXp3FilesInDirectory => '所选目录中未找到 XP3 文件。';
+
+  @override
+  String get selectXp3File => '选择 XP3 文件';
 }

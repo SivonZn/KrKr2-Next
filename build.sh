@@ -182,5 +182,22 @@ echo ""
 # Ensure the script is executable
 chmod +x "$PLATFORM_SCRIPT"
 
+# Fix MacOS bison version issue by using Homebrew bison
+OS_TYPE="$(uname -s)"
+BISON_REQUIRED_VERSION="3.8.2"
+if [[ "$OS_TYPE" == "Darwin" ]]; then
+    if [[ -d "/usr/local/opt/bison/bin" ]]; then
+        export PATH="/usr/local/opt/bison/bin:$PATH"
+    fi
+    # verify bison version to judge if Homebrew bison is being used
+    ver=$(bison --version | head -n1 | awk '{print $NF}')
+    if [[ "$(printf '%s
+    ' "$BISON_REQUIRED_VERSION" "$ver" | sort -V | head -n1)" != "$BISON_REQUIRED_VERSION" ]]; then
+        log_error "Require bison version $BISON_REQUIRED_VERSION or newer (found $ver)"
+        log_info "Install via: 'brew install bison'"
+        exit 1
+    fi
+fi
+
 # Execute the platform-specific build script with arguments
 exec bash "$PLATFORM_SCRIPT" "$BUILD_TYPE" ${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}

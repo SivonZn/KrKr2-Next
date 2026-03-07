@@ -119,5 +119,8 @@
   "unpackingProgress": "展開中...",
   "packComplete": "パック完了",
   "unpackComplete": "展開完了",
-  "xp3OperationFailed": "操作失敗：{error}"
+  "xp3OperationFailed": "操作失敗：{error}",
+  "directoryAccessError": "ディレクトリにアクセスできません。権限を確認してください。",
+  "noXp3FilesInDirectory": "選択したディレクトリにXP3ファイルが見つかりません。",
+  "selectXp3File": "XP3ファイルを選択"
 }

@@ -723,6 +723,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Operation failed: {error}'**
   String xp3OperationFailed(String error);
+
+  /// No description provided for @directoryAccessError.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot access directory. Please check permissions.'**
+  String get directoryAccessError;
+
+  /// No description provided for @noXp3FilesInDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'No XP3 files found in the selected directory.'**
+  String get noXp3FilesInDirectory;
+
+  /// No description provided for @selectXp3File.
+  ///
+  /// In en, this message translates to:
+  /// **'Select XP3 File'**
+  String get selectXp3File;
 }
 
 class _AppLocalizationsDelegate

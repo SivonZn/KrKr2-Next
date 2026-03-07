@@ -159,5 +159,9 @@
     "placeholders": {
       "error": { "type": "String" }
     }
-  }
+  },
+
+  "directoryAccessError": "Cannot access directory. Please check permissions.",
+  "noXp3FilesInDirectory": "No XP3 files found in the selected directory.",
+  "selectXp3File": "Select XP3 File"
 }

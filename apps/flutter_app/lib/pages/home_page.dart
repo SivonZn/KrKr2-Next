@@ -280,6 +280,95 @@ class _HomePageState extends State<HomePage> {
       return;
     }
 
+    if (Platform.isMacOS) {
+      // macOS特殊处理：由于沙盒限制，选择目录而不是单个文件
+      // 这样应用可以访问目录中的所有文件，包括XP3文件及其依赖资源
+      final String? selectedDirectory = await FilePicker.platform.getDirectoryPath(
+        dialogTitle: l10n.selectGameDirectory,
+      );
+      if (selectedDirectory == null || !mounted) return;
+
+      // 在目录中查找XP3文件
+      final dir = Directory(selectedDirectory);
+      List<String> xp3Files = [];
+      try {
+        await for (final entry in dir.list()) {
+          if (entry is File && entry.path.toLowerCase().endsWith('.xp3')) {
+            xp3Files.add(entry.path);
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l10n.directoryAccessError),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+
+      if (xp3Files.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l10n.noXp3FilesInDirectory),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+
+      // 如果有多个XP3文件，让用户选择
+      String? selectedXp3Path;
+      if (xp3Files.length == 1) {
+        selectedXp3Path = xp3Files.first;
+      } else {
+        // 显示选择对话框
+        selectedXp3Path = await showDialog<String>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: Text(l10n.selectXp3File),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: xp3Files.length,
+                itemBuilder: (ctx, index) {
+                  final path = xp3Files[index];
+                  return ListTile(
+                    title: Text(p.basename(path)),
+                    onTap: () => Navigator.pop(ctx, path),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      }
+
+      if (selectedXp3Path == null || !mounted) return;
+      
+      final game = GameInfo(path: selectedXp3Path);
+      final added = await _gameManager.addGame(game);
+      if (mounted) {
+        if (added) {
+          setState(() {});
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(l10n.gameAlreadyExists(p.basename(selectedXp3Path))),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+      return;
+    }
+
+    // 其他平台（Windows、Linux）的原有逻辑
     final result = await FilePicker.platform.pickFiles(
       dialogTitle: l10n.selectGameArchive,
       type: FileType.custom,

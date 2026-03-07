@@ -49,7 +49,10 @@
       "platform": "windows"
     },
     "ffmpeg",
-    "fmt",
+    {
+      "name": "fmt",
+      "version>=": "12.0.0"
+    },
     "jxrlib",
     "libarchive",
     "libxml2",
